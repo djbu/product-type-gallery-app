@@ -1,0 +1,43 @@
+# Shopify app configuration.
+# `shopify app dev` / `shopify app config link` will fill client_id and the
+# application_url / redirect URLs. Commit this with your own client_id after linking.
+
+name = "Product Type Gallery"
+handle = "product-type-gallery"
+# client_id = "REPLACE_AFTER_LINK"
+application_url = "https://localhost"
+embedded = true
+
+[access_scopes]
+# read_products: list product types + tags for conditions and read product data.
+# read/write_files: reference Shopify-hosted files (images/videos) chosen by merchant.
+scopes = "read_products,read_files,write_files"
+
+[auth]
+redirect_urls = [
+  "https://localhost/auth/callback",
+  "https://localhost/auth/shopify/callback",
+  "https://localhost/api/auth/callback"
+]
+
+# App Proxy — exposes the storefront data endpoint.
+# Storefront requests to  /apps/gallery-media?productId=...  are proxied by
+# Shopify to  {application_url}/proxy  (the prefix+subpath are stripped).
+# The route at app/routes/proxy.tsx handles it.
+[app_proxy]
+url = "https://localhost/proxy"
+subpath = "gallery-media"
+prefix = "apps"
+
+[webhooks]
+api_version = "2024-10"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+uri = "/webhooks/app/uninstalled"
+
+[pos]
+embedded = false
+
+[build]
+include_config_on_deploy = true

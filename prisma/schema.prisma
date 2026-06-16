@@ -1,0 +1,83 @@
+// Prisma schema for the Product Type Gallery App.
+//
+// Development uses SQLite. The schema avoids SQLite-only features so it can be
+// migrated to PostgreSQL by changing the datasource provider + DATABASE_URL.
+// To switch:
+//   datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+// then run `prisma migrate dev`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Shopify offline/online session storage (managed by @shopify/shopify-app-session-storage-prisma).
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+// A merchant-defined rule that appends extra media to matching products.
+model GalleryRule {
+  id        String   @id @default(cuid())
+  shop      String
+  name      String
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  media      GalleryMedia[]
+  conditions GalleryCondition[]
+
+  // Hot path: fetch all rules for a shop ordered by priority.
+  @@index([shop, priority])
+}
+
+// No native enum on SQLite — mediaType stored as String ("image" | "video").
+model GalleryMedia {
+  id            String   @id @default(cuid())
+  galleryRuleId String
+  mediaType     String // "image" | "video"
+  shopifyFileId String? // Shopify File GID, stored whenever available
+  url           String
+  sortOrder     Int      @default(0)
+
+  rule GalleryRule @relation(fields: [galleryRuleId], references: [id], onDelete: Cascade)
+
+  // Media is fetched per-rule and rendered in merchant order.
+  @@index([galleryRuleId, sortOrder])
+}
+
+model GalleryCondition {
+  id            String   @id @default(cuid())
+  galleryRuleId String
+  productType   String // required
+  titleContains String? // optional, case-insensitive contains
+  // Tags stored as a JSON-encoded string array for SQLite portability.
+  // On PostgreSQL this can become String[] without changing app code that
+  // already serializes/deserializes via the service layer.
+  tagsJson      String   @default("[]")
+
+  rule GalleryRule @relation(fields: [galleryRuleId], references: [id], onDelete: Cascade)
+
+  // Conditions are filtered by productType first to shrink the candidate set.
+  @@index([galleryRuleId])
+  @@index([productType])
+}

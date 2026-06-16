@@ -1,0 +1,13 @@
+node_modules
+/build
+/.cache
+/public/build
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-journal
+dev.sqlite
+.shopify
+.DS_Store
+/extensions/*/node_modules

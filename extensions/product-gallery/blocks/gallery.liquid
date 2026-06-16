@@ -1,0 +1,84 @@
+{%- comment -%}
+  Product Type Gallery — App Embed Block.
+
+  Toggle this on under Theme Customizer → App embeds. It runs site-wide but only
+  acts on product pages (guarded by `product` below).
+
+  It does NOT render a gallery of its own by default. It fetches the matching
+  media from the app and:
+    1. Dispatches a `product-gallery:loaded` event with { images, videos }, and
+    2. Exposes the data at window.ProductTypeGalleryData
+  so your existing theme gallery can append it. Optionally, set "Auto-append
+  media" to let the block append thumbnails after the native media for you.
+
+  Media is APPENDED only — native Shopify product media is never replaced.
+{%- endcomment -%}
+
+{%- if product -%}
+  <script type="application/json" data-product-type-gallery-context>
+    {
+      "productId": {{ product.id | json }},
+      "productType": {{ product.type | json }},
+      "title": {{ product.title | json }},
+      "tags": {{ product.tags | json }},
+      "endpoint": "/apps/gallery-media",
+      "settings": {
+        "autoAppend": {{ block.settings.auto_append | json }},
+        "targetSelector": {{ block.settings.target_selector | json }},
+        "showVideos": {{ block.settings.show_videos | json }},
+        "headingText": {{ block.settings.heading_text | json }}
+      }
+    }
+  </script>
+
+  {%- comment -%} Container the default renderer appends into (only used when Auto-append is on). {%- endcomment -%}
+  <div
+    id="product-type-gallery"
+    class="product-type-gallery"
+    data-product-type-gallery
+    hidden
+  >
+    {%- if block.settings.heading_text != blank -%}
+      <h3 class="product-type-gallery__heading">{{ block.settings.heading_text }}</h3>
+    {%- endif -%}
+    <div class="product-type-gallery__grid" data-product-type-gallery-grid></div>
+  </div>
+
+  {{ 'gallery.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'gallery.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Product Type Gallery",
+  "target": "body",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "auto_append",
+      "label": "Auto-append media",
+      "info": "When on, the block appends matching media after the native product media. Turn off to render it yourself from the product-gallery:loaded event.",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "target_selector",
+      "label": "Append after (CSS selector)",
+      "info": "Element the gallery is inserted after. Leave default to append at the end of the block container.",
+      "default": ".product__media-list, .product-single__media-group, [data-product-media-group]"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_videos",
+      "label": "Show videos",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading_text",
+      "label": "Heading",
+      "default": "More views"
+    }
+  ]
+}
+{% endschema %}
