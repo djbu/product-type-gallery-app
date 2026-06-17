@@ -1,17 +1,16 @@
 // Prisma schema for the Product Type Gallery App.
 //
-// Development uses SQLite. The schema avoids SQLite-only features so it can be
-// migrated to PostgreSQL by changing the datasource provider + DATABASE_URL.
-// To switch:
-//   datasource db { provider = "postgresql" url = env("DATABASE_URL") }
-// then run `prisma migrate dev`.
+// Runs on PostgreSQL (Neon in production). DATABASE_URL points at the Postgres
+// instance. For local dev, use a Neon dev branch or any local Postgres.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // native = local dev; debian target = the Docker/Koyeb runtime (node:20-slim).
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

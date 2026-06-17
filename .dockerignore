@@ -1,0 +1,14 @@
+node_modules
+build
+.cache
+.git
+.env
+.env.*
+*.sqlite
+*.sqlite-journal
+.shopify
+.DS_Store
+npm-debug.log
+extensions/*/node_modules
+README.md
+*.pdf

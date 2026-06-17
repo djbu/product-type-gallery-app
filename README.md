@@ -5,7 +5,7 @@ based on configurable conditions (product type, title, tags) — a scalable,
 **Metaobject-free** replacement built to run on stores with 5,000+ products.
 
 Built with the Shopify App Remix template, Polaris, the Admin GraphQL API, a
-Theme App Extension (app embed block), and Prisma + SQLite (PostgreSQL-ready).
+Theme App Extension (app embed block), and Prisma + PostgreSQL (Neon).
 
 ---
 
@@ -60,10 +60,10 @@ Storefront product page
 # 1. Install deps
 npm install
 
-# 2. Configure env
-cp .env.example .env          # DATABASE_URL defaults to file:./dev.sqlite
+# 2. Configure env — set DATABASE_URL to a Postgres instance
+cp .env.example .env          # e.g. a free Neon dev branch, or local Postgres
 
-# 3. Create the dev database
+# 3. Create the schema
 npx prisma migrate deploy     # applies prisma/migrations
 npx prisma generate
 
@@ -89,8 +89,44 @@ embedded admin opens to **Gallery Rules**.
 npm run deploy                # deploys app config + the theme extension
 ```
 
-For production, switch Prisma to PostgreSQL (see below) and host the app
-(Fly.io, Render, Heroku, etc.) with `npm run setup && npm run start`.
+---
+
+## Production hosting — Koyeb + Neon (free)
+
+The app ships with a `Dockerfile` (node:20-slim, applies migrations on boot).
+Recommended free stack: **Neon** (Postgres) + **Koyeb** (container host). Both
+allow commercial use with no card.
+
+### 1. Database — Neon
+1. Create a project at [neon.tech](https://neon.tech).
+2. Copy the **pooled** connection string → this is `DATABASE_URL`
+   (`postgresql://…-pooler…/neondb?sslmode=require`).
+
+### 2. App — Koyeb
+Koyeb builds the `Dockerfile` straight from a GitHub repo.
+1. Push this repo to GitHub (private is fine).
+2. [app.koyeb.com](https://app.koyeb.com) → **Create Service → GitHub** → pick the repo.
+3. Builder: **Dockerfile**. Instance: **Free**. Port: **8000**.
+4. Set env vars (Service → Settings → Environment):
+   - `DATABASE_URL` = Neon pooled string
+   - `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET` = from your Partner app
+   - `SHOPIFY_APP_URL` = `https://<your-service>.koyeb.app`
+   - `SCOPES` = `read_products,read_files,write_files`
+5. Deploy. The container runs `prisma migrate deploy` then `remix-serve`.
+
+> The app **will not boot** without `SHOPIFY_API_URL`/key/secret/scopes set — it
+> validates them at startup. Set all four.
+
+> Koyeb free scales to zero after ~1h idle (1–5s cold start). To avoid cold
+> starts on the storefront, set the service **min instances = 1**.
+
+### 3. Point the Shopify app at Koyeb
+In `shopify.app.toml` set `application_url` and the `app_proxy.url` to your
+Koyeb domain, then `shopify app deploy` (pushes app config + the theme
+extension to Shopify's CDN). Install on the store from the Partner dashboard.
+
+### Seeding production (optional)
+`SEED_SHOP=your-store.myshopify.com DATABASE_URL=<neon> npm run seed`
 
 ---
 
@@ -215,12 +251,9 @@ category, collections, SKU contains, variant options):
 
 No change to the evaluation loop is required.
 
-## Migrating to PostgreSQL
+## Schema notes
 
-1. In `schema.prisma` set `provider = "postgresql"`.
-2. Point `DATABASE_URL` at your Postgres instance.
-3. `npx prisma migrate dev --name init_pg`.
-
-The app code already serializes condition tags through the service layer, so the
-`tagsJson` string can become a native `String[]` column with only a schema +
-service tweak.
+Tags are stored as a JSON string (`tagsJson`) for portability and are
+serialized through the service layer. On Postgres this can become a native
+`text[]` column with only a schema + service tweak if you ever want SQL-level
+tag filtering.
